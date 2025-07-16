@@ -63,7 +63,7 @@ def gravar_video():
             continue
         if out is None:
             height, width = frame.shape[:2]
-            out = cv2.VideoWriter('video_saida.mp4', fourcc, 20.0, (width, height))
+            out = cv2.VideoWriter('video_saida_threads.mp4', fourcc, 20.0, (width, height))
             if not out.isOpened():
                 print("Não foi possível abrir o VideoWriter.")
                 recording = False
@@ -84,11 +84,11 @@ try:
     while True:
         comando = input("Comando: ").strip().upper()
         if comando == 'F':
-            mover_motor(50, 50)
+            mover_motor(30, 30)
         elif comando == 'E':
-            mover_motor(30, 50)
+            mover_motor(20, 30)
         elif comando == 'D':
-            mover_motor(50, 30)
+            mover_motor(30, 20)
         elif comando == 'S':
             parar()
         elif comando == 'Q':
