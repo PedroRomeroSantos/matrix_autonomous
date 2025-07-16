@@ -57,7 +57,7 @@ if not cap.isOpened():
 
 # Configura gravação do vídeo
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('video_saida.mp4', fourcc, 20.0, (1280, 720))
+out = None  # Será inicializado após capturar o primeiro frame
 
 print("Comandos: [F]rente, [E]squerda, [D]ireita, [S]top, [Q]uit")
 
@@ -67,6 +67,12 @@ try:
         if not ret or frame is None:
             print("Falha ao capturar frame da câmera.")
             break
+
+        print(f"Frame shape: {frame.shape}")  # Diagnóstico
+        if out is None:
+            # Inicializa o VideoWriter com o tamanho real do frame
+            height, width = frame.shape[:2]
+            out = cv2.VideoWriter('video_saida.mp4', fourcc, 20.0, (width, height))
 
         out.write(frame)  # Salva o frame original da câmera
         # Se quiser exibir rotacionado/redimensionado, descomente abaixo:
