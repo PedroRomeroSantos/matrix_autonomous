@@ -68,11 +68,22 @@ try:
             print("Falha ao capturar frame da câmera.")
             break
 
-        print(f"Frame shape: {frame.shape}")  # Diagnóstico
+        if not isinstance(frame, np.ndarray):
+            print("Frame não é uma imagem válida.")
+            break
+
+        print(f"Frame shape: {frame.shape}, dtype: {frame.dtype}")  # Diagnóstico
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            print("Frame não tem 3 canais de cor. Não será gravado.")
+            break
+
         if out is None:
             # Inicializa o VideoWriter com o tamanho real do frame
             height, width = frame.shape[:2]
             out = cv2.VideoWriter('video_saida.mp4', fourcc, 20.0, (width, height))
+            if not out.isOpened():
+                print("Não foi possível abrir o VideoWriter.")
+                break
 
         out.write(frame)  # Salva o frame original da câmera
         # Se quiser exibir rotacionado/redimensionado, descomente abaixo:
@@ -106,5 +117,6 @@ finally:
     pwm_dir.stop()
     GPIO.cleanup()
     cap.release()
-    out.release()
+    if out is not None:
+        out.release()
     cv2.destroyAllWindows()
