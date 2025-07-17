@@ -84,7 +84,7 @@ try:
     while True:
         comando = input("Comando: ").strip().upper()
         if comando == 'F':
-            mover_motor(60, 60)
+            mover_motor(100, 100)
         elif comando == 'E':
             mover_motor(10, 60)
         elif comando == 'D':
