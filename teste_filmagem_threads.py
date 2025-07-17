@@ -4,7 +4,7 @@ import threading
 import RPi.GPIO as GPIO
 import time
 
-IN1, IN2 = 17, 27
+IN1, IN2 = 27, 17
 IN3, IN4 = 22, 23
 ENA = 19
 ENB = 13
@@ -84,11 +84,11 @@ try:
     while True:
         comando = input("Comando: ").strip().upper()
         if comando == 'F':
-            mover_motor(30, 30)
+            mover_motor(60, 60)
         elif comando == 'E':
-            mover_motor(20, 30)
+            mover_motor(10, 60)
         elif comando == 'D':
-            mover_motor(30, 20)
+            mover_motor(60, 10)
         elif comando == 'S':
             parar()
         elif comando == 'Q':
