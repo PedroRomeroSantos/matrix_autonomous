@@ -63,7 +63,7 @@ def gravar_video():
             continue
         if out is None:
             height, width = frame.shape[:2]
-            out = cv2.VideoWriter('video_saida_threads.mp4', fourcc, 20.0, (width, height))
+            out = cv2.VideoWriter('video_roi.mp4', fourcc, 20.0, (width, height))
             if not out.isOpened():
                 print("Não foi possível abrir o VideoWriter.")
                 recording = False
