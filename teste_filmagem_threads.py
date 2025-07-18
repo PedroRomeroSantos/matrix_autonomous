@@ -84,15 +84,12 @@ def filtros(frame):
 
 def roi(frame):
     altura, largura = frame.shape[:2]
-    # Define os pontos do trapézio (ajuste conforme necessário)
-    topo = int(altura * 0.6)
+    topo = int(altura * 0.4)  # altura do topo do triângulo
     base = altura
-    margem = int(largura * 0.2)
     polygon = np.array([[
-        (margem, base),                # canto inferior esquerdo
-        (largura - margem, base),      # canto inferior direito
-        (int(largura * 0.7), topo),   # topo direito
-        (int(largura * 0.3), topo)    # topo esquerdo
+        (0, base),                  # canto inferior esquerdo
+        (largura, base),            # canto inferior direito
+        (largura // 2, topo)        # topo central
     ]], dtype=np.int32)
     mask = np.zeros_like(frame)
     cv2.fillPoly(mask, polygon, (255, 255, 255))
