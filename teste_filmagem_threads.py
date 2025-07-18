@@ -69,11 +69,35 @@ def gravar_video():
                 recording = False
                 break
         out.write(frame)
-        # Opcional: exibir preview
-        # frame_exibicao = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        # frame_exibicao = cv2.resize(frame_exibicao, (640, 480))
-        # cv2.imshow("Camera", frame_exibicao)
-        # cv2.waitKey(1)
+        filtros(frame)
+
+def filtros(frame):
+    imagem_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    imagem_blur = cv2.GaussianBlur(imagem_gray, (5, 5), 0)
+    imagem_canny = cv2.Canny(imagem_blur, 50, 150)
+    edges = cv2.Canny(imagem_gray, 50, 150)
+    linhas = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=50)
+    for linha in linhas:
+        x1, y1, x2, y2 = linha[0]
+        cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    cv2.imshow("Canny", imagem_canny)
+
+def roi(frame):
+    altura, largura = frame.shape[:2]
+    # Define os pontos do trapézio (ajuste conforme necessário)
+    topo = int(altura * 0.6)
+    base = altura
+    margem = int(largura * 0.2)
+    polygon = np.array([[
+        (margem, base),                # canto inferior esquerdo
+        (largura - margem, base),      # canto inferior direito
+        (int(largura * 0.7), topo),   # topo direito
+        (int(largura * 0.3), topo)    # topo esquerdo
+    ]], dtype=np.int32)
+    mask = np.zeros_like(frame)
+    cv2.fillPoly(mask, polygon, (255, 255, 255))
+    masked_frame = cv2.bitwise_and(frame, mask)
+    return masked_frame
 
 print("Comandos: [F]rente, [E]squerda, [D]ireita, [S]top, [Q]uit")
 
@@ -95,10 +119,8 @@ try:
             break
         else:
             print("Comando inválido. Use F, E, D, S ou Q.")
-            print("Parando carrinho")
-            break
 except KeyboardInterrupt:
-    print("Interrompido pelo usuário")
+    print("Interrupção")
 finally:
     recording = False
     video_thread.join()
