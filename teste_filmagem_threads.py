@@ -39,7 +39,7 @@ def parar():
 
 pipeline = (
     "libcamerasrc ! "
-    "video/x-raw, width=1280, height=720, framerate=30/1 ! "
+    "video/x-raw, width=1640, height=480, framerate=30/1 ! "
     "videoconvert ! appsink"
 )
 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
