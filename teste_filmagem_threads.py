@@ -85,7 +85,7 @@ def filtros(frame):
 
 def roi(frame):
     altura, largura = frame.shape[:2]
-    topo = int(altura * 0.4)  # ajuste conforme desejado
+    topo = int(altura * 0.15)  #quanto menor maior a altura do triângulo
     base = altura
     polygon = np.array([[
         (0, base),
