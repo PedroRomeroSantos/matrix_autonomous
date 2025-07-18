@@ -68,7 +68,6 @@ def gravar_video():
                 print("Não foi possível abrir o VideoWriter.")
                 recording = False
                 break
-        out.write(frame)
         filtros(frame)
 
 def filtros(frame):
@@ -77,30 +76,31 @@ def filtros(frame):
     imagem_canny = cv2.Canny(imagem_blur, 50, 150)
     edges = cv2.Canny(imagem_gray, 50, 150)
     linhas = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=50)
-    for linha in linhas:
-        x1, y1, x2, y2 = linha[0]
-        cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    cv2.imshow("Canny", imagem_canny)
+    if linhas is not None:
+        for linha in linhas:
+            x1, y1, x2, y2 = linha[0]
+            cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    #cv2.imshow("ROI com Linhas", frame)
+    roi(frame)
 
 def roi(frame):
     altura, largura = frame.shape[:2]
-    topo = int(altura * 0.4)  # altura do topo do triângulo
+    topo = int(altura * 0.4)  # ajuste conforme desejado
     base = altura
     polygon = np.array([[
-        (0, base),                  # canto inferior esquerdo
-        (largura, base),            # canto inferior direito
-        (largura // 2, topo)        # topo central
+        (0, base),
+        (largura, base),
+        (largura // 2, topo)
     ]], dtype=np.int32)
     mask = np.zeros_like(frame)
     cv2.fillPoly(mask, polygon, (255, 255, 255))
     masked_frame = cv2.bitwise_and(frame, mask)
-    return masked_frame
-
-print("Comandos: [F]rente, [E]squerda, [D]ireita, [S]top, [Q]uit")
+    out.write(masked_frame)
 
 video_thread = threading.Thread(target=gravar_video)
 video_thread.start()
 
+print("Comandos: [F]rente, [E]squerda, [D]ireita, [S]top, [Q]uit")
 try:
     while True:
         comando = input("Comando: ").strip().upper()
