@@ -78,7 +78,7 @@ def processamento(frame):
 
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     lower = np.array([0, 0, 0])
-    upper = np.array([180, 255, 100])
+    upper = np.array([180, 255, 80])
     mask = cv2.inRange(hsv, lower, upper)
 
     # ROI em forma de trapézio
