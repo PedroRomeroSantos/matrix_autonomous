@@ -81,7 +81,7 @@ def filtros(frame):
             x1, y1, x2, y2 = linha[0]
             cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
     #cv2.imshow("ROI com Linhas", frame)
-    roi(frame)
+    out.write(frame)
 
 def roi(frame):
     altura, largura = frame.shape[:2]
