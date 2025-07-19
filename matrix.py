@@ -1,40 +1,49 @@
 import cv2
 import numpy as np
+import threading
 import RPi.GPIO as GPIO
 import time
 
-IN1, IN2 = 17, 27
+IN1, IN2 = 27, 17
 IN3, IN4 = 22, 23
 ENA = 19
 ENB = 13
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-
-# Configura GPIO
 for pin in [IN1, IN2, IN3, IN4, ENA, ENB]:
     GPIO.setup(pin, GPIO.OUT)
 
 pwm_esq = GPIO.PWM(ENA, 100)
 pwm_dir = GPIO.PWM(ENB, 100)
-
 pwm_esq.start(0)
 pwm_dir.start(0)
 
-#Função de controle dos motores
 def mover_motor(v_esq, v_dir):
-    # Limita entre 0 e 100
     v_esq = max(min(v_esq, 100), 0)
     v_dir = max(min(v_dir, 100), 0)
-
-    # Sempre pra frente (ajusta se quiser incluir marcha ré)
     GPIO.output(IN1, GPIO.HIGH)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
-
     pwm_esq.ChangeDutyCycle(v_esq)
     pwm_dir.ChangeDutyCycle(v_dir)
+
+def girar_esquerda():
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.HIGH)
+    GPIO.output(IN4, GPIO.LOW)
+    pwm_esq.ChangeDutyCycle(50)
+    pwm_dir.ChangeDutyCycle(50)
+
+def girar_direita():
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.HIGH)
+    pwm_esq.ChangeDutyCycle(50)
+    pwm_dir.ChangeDutyCycle(50)
 
 def parar():
     GPIO.output(IN1, GPIO.LOW)
@@ -44,87 +53,110 @@ def parar():
     pwm_esq.ChangeDutyCycle(0)
     pwm_dir.ChangeDutyCycle(0)
 
-# Pipeline da câmera
 pipeline = (
     "libcamerasrc ! "
     "video/x-raw, width=1280, height=720, framerate=30/1 ! "
     "videoconvert ! appsink"
 )
-
 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-
 if not cap.isOpened():
     print("Não foi possível abrir a câmera")
     exit()
 
-# Controle proporcional
-Kp = 0.15  # → AJUSTE FINO AQUI
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = None  # Inicializa após primeiro frame
+recording = True
 
-# Loop principal
-try:
-    while True:
+cx_img = 640 // 2  # centro da imagem assumindo 1280x720
+Kp = 0.2  # constante de controle proporcional
+
+
+def processamento(frame):
+    altura, largura = frame.shape[:2]
+    inicio = int(altura * 0.6)
+    roi = frame[inicio:, :]
+
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    lower = np.array([0, 0, 0])
+    upper = np.array([180, 255, 100])
+    mask = cv2.inRange(hsv, lower, upper)
+
+    # ROI em forma de trapézio
+    h, w = mask.shape[:2]
+    topo_y = int(h * 0.2)
+    base_y = h
+    trapezio = np.array([[
+        (0, base_y), (w, base_y), (int(w * 0.65), topo_y), (int(w * 0.35), topo_y)
+    ]], dtype=np.int32)
+    mask_roi = np.zeros_like(mask)
+    cv2.fillPoly(mask_roi, trapezio, 255)
+    mask_final = cv2.bitwise_and(mask, mask_roi)
+
+    verde = np.zeros_like(roi)
+    verde[:] = (0, 255, 0)
+    area_verde = cv2.bitwise_and(verde, verde, mask=mask_final)
+    sobreposicao = cv2.addWeighted(roi, 1.0, area_verde, 0.4, 0)
+    frame[inicio:, :] = sobreposicao
+
+    trapezio_absoluto = trapezio + np.array([0, inicio])
+    cv2.polylines(frame, [trapezio_absoluto], isClosed=True, color=(0, 255, 0), thickness=2)
+
+    M = cv2.moments(mask_final)
+    if M["m00"] != 0:
+        cx = int(M["m10"] / M["m00"])
+        cy = int(M["m01"] / M["m00"]) + inicio
+        erro = cx - (largura // 2)
+
+        cv2.circle(frame, (cx, cy), 5, (0, 0, 255), -1)
+        cv2.line(frame, (largura // 2, cy), (cx, cy), (255, 255, 0), 2)
+        cv2.putText(frame, f"Erro de alinhamento: {erro}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        return frame, erro
+    else:
+        return frame, None
+
+def gravar_video():
+    global out, recording
+    while recording:
         ret, frame = cap.read()
         if not ret:
-            print("Sem imagem")
-            break
+            continue
 
-        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        frame_resized = cv2.resize(frame, (640, 480))
+        if out is None:
+            height, width = frame.shape[:2]
+            out = cv2.VideoWriter('video_roi_autonomo.mp4', fourcc, 20.0, (width, height))
 
-        roi = frame_resized[220:480, 0:640]  # Região de interesse (parte de baixo)
+        frame_segmentado, erro = processamento(frame.copy())
+        out.write(frame_segmentado)
 
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5,5), 0)
-        _, thresh = cv2.threshold(blur, 120, 255, cv2.THRESH_BINARY_INV)
-
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        if contours:
-            largest = max(contours, key=cv2.contourArea)
-            M = cv2.moments(largest)
-            if M['m00'] != 0:
-                cx = int(M['m10']/M['m00'])
-                cy = int(M['m01']/M['m00'])
-
-                cv2.circle(roi, (cx, cy), 5, (0, 0, 255), -1)
-
-                #Controle proporcional
-                centro_frame = 320  # → metade de 640
-                erro = cx - centro_frame
-                correcao = Kp * erro
-
-                v_base = 50  # → velocidade base
-
-                v_esq = v_base + correcao
-                v_dir = v_base - correcao
-
-                mover_motor(v_esq, v_dir)
-
-                print(f'Erro: {erro} | Esq: {v_esq:.1f} | Dir: {v_dir:.1f}')
-
+        if erro is not None:
+            if abs(erro) < 20:
+                mover_motor(40, 40)
+            elif erro > 0:
+                girar_direita()
             else:
-                print('Linha não detectada')
-                mover_motor(30, 30)
+                girar_esquerda()
         else:
-            print('Linha não detectada')
-            mover_motor(30, 30)
+            parar()
 
-        # Debug visual
-        cv2.imshow('Frame', frame_resized) # regiao de interesse
-        #cv2.imshow('Thresh', thresh)
+        time.sleep(0.05)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+video_thread = threading.Thread(target=gravar_video)
+video_thread.start()
 
+try:
+    while video_thread.is_alive():
+        time.sleep(0.1)
 except KeyboardInterrupt:
-    print('Parando')
-
+    print("Interrupção")
 finally:
+    recording = False
+    video_thread.join()
     parar()
     pwm_esq.stop()
     pwm_dir.stop()
     GPIO.cleanup()
     cap.release()
+    if out is not None:
+        out.release()
     cv2.destroyAllWindows()
-
-
