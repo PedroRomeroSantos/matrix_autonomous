@@ -51,24 +51,24 @@ fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = None  # Inicializa após primeiro frame
 recording = True
 
-def gravar_video():
-    global out, recording
-    while recording:
-        ret, frame = cap.read()
-        if not ret or frame is None:
-            continue
-        if not isinstance(frame, np.ndarray):
-            continue
-        if frame.ndim != 3 or frame.shape[2] != 3:
-            continue
-        if out is None:
-            height, width = frame.shape[:2]
-            out = cv2.VideoWriter('video_roi.mp4', fourcc, 20.0, (width, height))
-            if not out.isOpened():
-                print("Não foi possível abrir o VideoWriter.")
-                recording = False
-                break
-        filtros(frame)
+# def gravar_video():
+#     global out, recording
+#     while recording:
+#         ret, frame = cap.read()
+#         if not ret or frame is None:
+#             continue
+#         if not isinstance(frame, np.ndarray):
+#             continue
+#         if frame.ndim != 3 or frame.shape[2] != 3:
+#             continue
+#         if out is None:
+#             height, width = frame.shape[:2]
+#             out = cv2.VideoWriter('video_roi.mp4', fourcc, 20.0, (width, height))
+#             if not out.isOpened():
+#                 print("Não foi possível abrir o VideoWriter.")
+#                 recording = False
+#                 break
+#         filtros(frame)
 
 def filtros(frame):
     imagem_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -86,7 +86,7 @@ def filtros(frame):
     if cv2.waitKey(1) & 0xFF == ord('q'):
         return
 
-    #out.write(frame)
+    # out.write(frame)
 
 def roi(frame):
     altura, largura = frame.shape[:2]
@@ -100,14 +100,19 @@ def roi(frame):
     mask = np.zeros_like(frame)
     cv2.fillPoly(mask, polygon, (255, 255, 255))
     masked_frame = cv2.bitwise_and(frame, mask)
-    out.write(masked_frame)
+    # out.write(masked_frame)
 
-video_thread = threading.Thread(target=gravar_video)
-video_thread.start()
+# video_thread = threading.Thread(target=gravar_video)
+# video_thread.start()
 
 print("Comandos: [F]rente, [E]squerda, [D]ireita, [S]top, [Q]uit")
 try:
     while True:
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        filtros(frame)
+
         comando = input("Comando: ").strip().upper()
         if comando == 'F':
             mover_motor(100, 100)
@@ -125,7 +130,7 @@ except KeyboardInterrupt:
     print("Interrupção")
 finally:
     recording = False
-    video_thread.join()
+    # video_thread.join()
     parar()
     pwm_esq.stop()
     pwm_dir.stop()
