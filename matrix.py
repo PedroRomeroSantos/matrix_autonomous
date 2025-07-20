@@ -34,16 +34,16 @@ def girar_esquerda():
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
-    pwm_esq.ChangeDutyCycle(50)
-    pwm_dir.ChangeDutyCycle(50)
+    pwm_esq.ChangeDutyCycle(40)
+    pwm_dir.ChangeDutyCycle(40)
 
 def girar_direita():
     GPIO.output(IN1, GPIO.HIGH)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
-    pwm_esq.ChangeDutyCycle(50)
-    pwm_dir.ChangeDutyCycle(50)
+    pwm_esq.ChangeDutyCycle(40)
+    pwm_dir.ChangeDutyCycle(40)
 
 def parar():
     GPIO.output(IN1, GPIO.LOW)
@@ -73,7 +73,7 @@ Kp = 0.2  # constante de controle proporcional
 
 def processamento(frame):
     altura, largura = frame.shape[:2]
-    inicio = int(altura * 0.5)  # agora ROI começa na metade da imagem
+    inicio = int(altura * 0.4)  # agora ROI começa na metade da imagem
     roi = frame[inicio:, :]
 
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
