@@ -39,7 +39,7 @@ def parar():
 
 pipeline = (
     "libcamerasrc ! "
-    "video/x-raw, width=1640, height=480, framerate=30/1 ! "
+    "video/x-raw, width=1280, height=720, framerate=30/1 ! "
     "videoconvert ! appsink"
 )
 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
@@ -69,7 +69,7 @@ recording = True
 #                 recording = False
 #                 break
 #         filtros(frame)
-
+cv2.namedWindow("Visualizacao ao vivo", cv2.WINDOW_NORMAL)
 def filtros(frame):
     imagem_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     imagem_blur = cv2.GaussianBlur(imagem_gray, (5, 5), 0)
@@ -82,7 +82,6 @@ def filtros(frame):
             cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     # Exibe frame com linhas sobrepostas em uma única janela persistente
-    cv2.namedWindow("Visualizacao ao vivo", cv2.WINDOW_NORMAL)
     cv2.imshow("Visualizacao ao vivo", frame)
     cv2.waitKey(1)
     # out.write(frame)
