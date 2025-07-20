@@ -63,7 +63,7 @@ def gravar_video():
         if frame.ndim != 3 or frame.shape[2] != 3:
             continue
 
-        segmentado, centro = segmentar_pista(frame)
+        segmentado, centro, media_y = segmentar_pista(frame)
 
         if out is None:
             height, width = segmentado.shape[:2]
@@ -73,22 +73,31 @@ def gravar_video():
 
         centro_frame = width // 2
         margem = 20  # margem de tolerância para alinhamento
+        altura_limite = int(height * 0.75)  # se a média da pista estiver muito baixa
 
         if centro:
             erro = centro[0] - centro_frame
-            if abs(erro) <= margem:
-                mover_motor(60, 60)  # alinhado → avança
+            if media_y > altura_limite:
+                parar()
+                if alternar_busca:
+                    mover_motor(0, 60)
+                else:
+                    mover_motor(60, 0)
+                alternar_busca = not alternar_busca
+                time.sleep(0.5)
+            elif abs(erro) <= margem:
+                mover_motor(60, 60)
             elif erro < 0:
-                mover_motor(30, 70)  # pista à esquerda → gira levemente
+                mover_motor(30, 70)
             else:
-                mover_motor(70, 30)  # pista à direita → gira levemente
+                mover_motor(70, 30)
         else:
             if alternar_busca:
-                mover_motor(0, 60)  # gira para a direita
+                mover_motor(0, 60)
             else:
-                mover_motor(60, 0)  # gira para a esquerda
-            alternar_busca = not alternar_busca  # alterna para próxima busca
-            time.sleep(0.5)  # pequena pausa para estabilizar
+                mover_motor(60, 0)
+            alternar_busca = not alternar_busca
+            time.sleep(0.5)
 
 def segmentar_pista(frame):
     blur = cv2.GaussianBlur(frame, (5, 5), 0)
@@ -100,6 +109,7 @@ def segmentar_pista(frame):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     centro = None
+    media_y = 0
     if contours:
         maior = max(contours, key=cv2.contourArea)
         if cv2.contourArea(maior) > 500:
@@ -109,9 +119,10 @@ def segmentar_pista(frame):
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
                 centro = (cx, cy)
+                media_y = cy
                 cv2.circle(frame, centro, 5, (0, 0, 255), -1)
 
-    return frame, centro
+    return frame, centro, media_y
 
 video_thread = threading.Thread(target=gravar_video)
 video_thread.start()
@@ -132,4 +143,5 @@ finally:
     if out is not None:
         out.release()
     cv2.destroyAllWindows()
+
 
