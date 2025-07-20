@@ -77,27 +77,19 @@ def gravar_video():
 
         if centro:
             erro = centro[0] - centro_frame
-            if media_y > altura_limite:
-                parar()
-                if alternar_busca:
-                    mover_motor(0, 60)
-                else:
-                    mover_motor(60, 0)
-                alternar_busca = not alternar_busca
-                time.sleep(0.5)
-            elif abs(erro) <= margem:
-                mover_motor(60, 60)
+            if abs(erro) <= margem:
+                mover_motor(60, 60)  # alinhado → avança
             elif erro < 0:
-                mover_motor(30, 70)
+                mover_motor(30, 70)  # pista à esquerda → gira levemente
             else:
-                mover_motor(70, 30)
+                mover_motor(70, 30)  # pista à direita → gira levemente
         else:
             if alternar_busca:
-                mover_motor(0, 60)
+                mover_motor(0, 60)  # gira para a direita
             else:
-                mover_motor(60, 0)
-            alternar_busca = not alternar_busca
-            time.sleep(0.5)
+                mover_motor(60, 0)  # gira para a esquerda
+            alternar_busca = not alternar_busca  # alterna para próxima busca
+            time.sleep(0.5)  # pequena pausa para estabilizar
 
 def segmentar_pista(frame):
     blur = cv2.GaussianBlur(frame, (5, 5), 0)
