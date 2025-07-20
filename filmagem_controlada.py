@@ -81,11 +81,10 @@ def filtros(frame):
             x1, y1, x2, y2 = linha[0]
             cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    # Exibe frame com linhas sobrepostas
-    cv2.imshow("Visualização ao vivo", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        return
-
+    # Exibe frame com linhas sobrepostas em uma única janela persistente
+    cv2.namedWindow("Visualizacao ao vivo", cv2.WINDOW_NORMAL)
+    cv2.imshow("Visualizacao ao vivo", frame)
+    cv2.waitKey(1)
     # out.write(frame)
 
 def roi(frame):
@@ -139,3 +138,4 @@ finally:
     if out is not None:
         out.release()
     cv2.destroyAllWindows()
+
