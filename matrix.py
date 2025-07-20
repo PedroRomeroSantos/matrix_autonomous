@@ -73,24 +73,16 @@ Kp = 0.2  # constante de controle proporcional
 
 def processamento(frame):
     altura, largura = frame.shape[:2]
-    inicio = int(altura * 0.6)
+    inicio = int(altura * 0.5)  # agora ROI começa na metade da imagem
     roi = frame[inicio:, :]
 
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     lower = np.array([0, 0, 0])
-    upper = np.array([180, 255, 80])
+    upper = np.array([180, 255, 100])
     mask = cv2.inRange(hsv, lower, upper)
 
-    # ROI em forma de trapézio
-    h, w = mask.shape[:2]
-    topo_y = int(h * 0.2)
-    base_y = h
-    trapezio = np.array([[
-        (0, base_y), (w, base_y), (int(w * 0.65), topo_y), (int(w * 0.35), topo_y)
-    ]], dtype=np.int32)
-    mask_roi = np.zeros_like(mask)
-    cv2.fillPoly(mask_roi, trapezio, 255)
-    mask_final = cv2.bitwise_and(mask, mask_roi)
+    # ROI retangular simples
+    mask_final = mask.copy()
 
     verde = np.zeros_like(roi)
     verde[:] = (0, 255, 0)
@@ -98,8 +90,7 @@ def processamento(frame):
     sobreposicao = cv2.addWeighted(roi, 1.0, area_verde, 0.4, 0)
     frame[inicio:, :] = sobreposicao
 
-    trapezio_absoluto = trapezio + np.array([0, inicio])
-    cv2.polylines(frame, [trapezio_absoluto], isClosed=True, color=(0, 255, 0), thickness=2)
+    cv2.rectangle(frame, (0, inicio), (largura, altura), (0, 255, 0), 2)
 
     M = cv2.moments(mask_final)
     if M["m00"] != 0:
@@ -160,3 +151,4 @@ finally:
     if out is not None:
         out.release()
     cv2.destroyAllWindows()
+
