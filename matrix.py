@@ -29,22 +29,6 @@ def mover_motor(v_esq, v_dir):
     pwm_esq.ChangeDutyCycle(v_esq)
     pwm_dir.ChangeDutyCycle(v_dir)
 
-def girar_esquerda():
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.HIGH)
-    GPIO.output(IN3, GPIO.HIGH)
-    GPIO.output(IN4, GPIO.LOW)
-    pwm_esq.ChangeDutyCycle(50)
-    pwm_dir.ChangeDutyCycle(50)
-
-def girar_direita():
-    GPIO.output(IN1, GPIO.HIGH)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.HIGH)
-    pwm_esq.ChangeDutyCycle(50)
-    pwm_dir.ChangeDutyCycle(50)
-
 def parar():
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.LOW)
@@ -55,7 +39,7 @@ def parar():
 
 pipeline = (
     "libcamerasrc ! "
-    "video/x-raw, width=1280, height=720, framerate=30/1 ! "
+    "video/x-raw, width=640, height=480, framerate=30/1 ! "
     "videoconvert ! appsink"
 )
 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
@@ -66,76 +50,68 @@ if not cap.isOpened():
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = None  # Inicializa após primeiro frame
 recording = True
-
-cx_img = 640 // 2  # centro da imagem assumindo 1280x720
-Kp = 0.2  # constante de controle proporcional
-
-
-def processamento(frame):
-    altura, largura = frame.shape[:2]
-    inicio = int(altura * 0.5)  # ROI começa na metade da imagem
-    roi = frame[inicio:, :]
-
-    # Converte para escala de cinza e aplica suavização
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # Detecta bordas para estimar regiões com variação (ruído, bordas, objetos)
-    edges = cv2.Canny(blur, 30, 60)
-
-    # A região uniforme é onde não há bordas (bitwise NOT)
-    mask_uniforme = cv2.bitwise_not(edges)
-
-    # Prepara sobreposição verde onde a pista é uniforme
-    verde = np.zeros_like(roi)
-    verde[:] = (0, 255, 0)
-    area_verde = cv2.bitwise_and(verde, verde, mask=mask_uniforme)
-    sobreposicao = cv2.addWeighted(roi, 1.0, area_verde, 0.4, 0)
-    frame[inicio:, :] = sobreposicao
-
-    # Desenha o retângulo da ROI
-    cv2.rectangle(frame, (0, inicio), (largura, altura), (0, 255, 0), 2)
-
-    # Cálculo do centro da máscara de uniformidade
-    M = cv2.moments(mask_uniforme)
-    if M["m00"] != 0:
-        cx = int(M["m10"] / M["m00"])
-        cy = int(M["m01"] / M["m00"]) + inicio
-        erro = cx - (largura // 2)
-
-        cv2.circle(frame, (cx, cy), 5, (0, 0, 255), -1)
-        cv2.line(frame, (largura // 2, cy), (cx, cy), (255, 255, 0), 2)
-        cv2.putText(frame, f"Erro de alinhamento: {erro}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-        return frame, erro
-    else:
-        return frame, None
+alternar_busca = True
 
 def gravar_video():
-    global out, recording
+    global out, recording, alternar_busca
     while recording:
         ret, frame = cap.read()
-        if not ret:
+        if not ret or frame is None:
+            continue
+        if not isinstance(frame, np.ndarray):
+            continue
+        if frame.ndim != 3 or frame.shape[2] != 3:
             continue
 
+        segmentado, centro = segmentar_pista(frame)
+
         if out is None:
-            height, width = frame.shape[:2]
-            out = cv2.VideoWriter('video_roi_autonomo.mp4', fourcc, 20.0, (width, height))
+            height, width = segmentado.shape[:2]
+            out = cv2.VideoWriter('video_pista_segmentada.mp4', fourcc, 20.0, (width, height))
 
-        frame_segmentado, erro = processamento(frame.copy())
-        out.write(frame_segmentado)
+        out.write(segmentado)
 
-        if erro is not None:
-            if abs(erro) < 20:
-                mover_motor(40, 40)
-            elif erro > 0:
-                girar_direita()
+        centro_frame = width // 2
+        margem = 20  # margem de tolerância para alinhamento
+
+        if centro:
+            erro = centro[0] - centro_frame
+            if abs(erro) <= margem:
+                mover_motor(60, 60)  # alinhado → avança
+            elif erro < 0:
+                mover_motor(30, 70)  # pista à esquerda → gira levemente
             else:
-                girar_esquerda()
+                mover_motor(70, 30)  # pista à direita → gira levemente
         else:
-            parar()
+            if alternar_busca:
+                mover_motor(0, 60)  # gira para a direita
+            else:
+                mover_motor(60, 0)  # gira para a esquerda
+            alternar_busca = not alternar_busca  # alterna para próxima busca
+            time.sleep(0.5)  # pequena pausa para estabilizar
 
-        time.sleep(0.05)
+def segmentar_pista(frame):
+    blur = cv2.GaussianBlur(frame, (5, 5), 0)
+    hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+
+    h, s, v = cv2.split(hsv)
+    v_blur = cv2.GaussianBlur(v, (9, 9), 0)
+    _, mask = cv2.threshold(v_blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    centro = None
+    if contours:
+        maior = max(contours, key=cv2.contourArea)
+        if cv2.contourArea(maior) > 500:
+            cv2.drawContours(frame, [maior], -1, (0, 255, 0), -1)
+            M = cv2.moments(maior)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+                centro = (cx, cy)
+                cv2.circle(frame, centro, 5, (0, 0, 255), -1)
+
+    return frame, centro
 
 video_thread = threading.Thread(target=gravar_video)
 video_thread.start()
