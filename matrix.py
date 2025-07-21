@@ -41,7 +41,7 @@ def parar():
 
 pipeline = (
     "libcamerasrc ! "
-    "video/x-raw, width=640, height=480, framerate=50/1 ! "
+    "video/x-raw, width=640, height=480, framerate=30/1 ! "
     "videoconvert ! appsink"
 )
 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
@@ -56,14 +56,15 @@ alternar_busca = True
 
 # Velocidades reduzidas para comportamento mais suave
 vel_avanco = 45
-vel_giro = 35
+vel_giro = 30
 
 def gravar_video():
     global out, recording
 
     em_avanco = False
-    inicio_rotacao = None
-    tempo_maximo_rotacao = 1.2  # segundos para giro de ~100°
+    estado_busca = 0
+    tempo_inicio_giro = None
+    tempos_rotacao = [1.2, 2.4, 1.2]  # tempo de cada fase de rotação
 
     while recording:
         ret, frame = cap.read()
@@ -87,8 +88,11 @@ def gravar_video():
         altura_limite = int(height * 0.75)
 
         if centro and media_y <= altura_limite:
+            # Encontrou pista → reseta busca
+            em_avanco = False
+            estado_busca = 0
+            tempo_inicio_giro = None
             erro = centro[0] - centro_frame
-            inicio_rotacao = None  # reset ao detectar pista boa
 
             if abs(erro) <= margem:
                 if not em_avanco:
@@ -101,21 +105,48 @@ def gravar_video():
                 parar()
                 time.sleep(0.5)
                 if erro < 0:
-                    mover_motor(-vel_giro, vel_giro)  # gira para esquerda
+                    mover_motor(-vel_giro, vel_giro)  # esquerda
                 else:
-                    mover_motor(vel_giro, -vel_giro)  # gira para direita
+                    mover_motor(vel_giro, -vel_giro)  # direita
 
         else:
             em_avanco = False
-            if inicio_rotacao is None:
-                inicio_rotacao = time.time()
 
-            tempo_decorrido = time.time() - inicio_rotacao
-            if tempo_decorrido <= tempo_maximo_rotacao:
-                mover_motor(-vel_giro, vel_giro)  # gira sobre eixo (esquerda)
-            else:
-                parar()
-                print("⚠️ Giro máximo atingido e pista não encontrada.")
+            if tempo_inicio_giro is None:
+                tempo_inicio_giro = time.time()
+
+            tempo_giro = time.time() - tempo_inicio_giro
+
+            if estado_busca == 0:
+                if tempo_giro < tempos_rotacao[0]:
+                    mover_motor(-vel_giro, vel_giro)  # gira esquerda
+                else:
+                    estado_busca = 1
+                    tempo_inicio_giro = time.time()
+                    parar()
+                    time.sleep(0.5)
+
+            elif estado_busca == 1:
+                if tempo_giro < tempos_rotacao[1]:
+                    mover_motor(vel_giro, -vel_giro)  # gira direita
+                else:
+                    estado_busca = 2
+                    tempo_inicio_giro = time.time()
+                    parar()
+                    time.sleep(0.5)
+
+            elif estado_busca == 2:
+                if tempo_giro < tempos_rotacao[2]:
+                    mover_motor(-vel_giro, vel_giro)  # gira esquerda de volta ao início
+                else:
+                    parar()
+                    print("🔙 Não encontrou pista. Recuando...")
+                    mover_motor(-40, -40)
+                    time.sleep(1)
+                    parar()
+                    # Reinicia busca
+                    estado_busca = 0
+                    tempo_inicio_giro = None
 
 
 
