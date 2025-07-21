@@ -73,26 +73,31 @@ Kp = 0.2  # constante de controle proporcional
 
 def processamento(frame):
     altura, largura = frame.shape[:2]
-    inicio = int(altura * 0.5)  # agora ROI começa na metade da imagem
+    inicio = int(altura * 0.5)  # ROI começa na metade da imagem
     roi = frame[inicio:, :]
 
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    lower = np.array([0, 0, 0])
-    upper = np.array([180, 255, 100])
-    mask = cv2.inRange(hsv, lower, upper)
+    # Converte para escala de cinza e aplica suavização
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # ROI retangular simples
-    mask_final = mask.copy()
+    # Detecta bordas para estimar regiões com variação (ruído, bordas, objetos)
+    edges = cv2.Canny(blur, 30, 60)
 
+    # A região uniforme é onde não há bordas (bitwise NOT)
+    mask_uniforme = cv2.bitwise_not(edges)
+
+    # Prepara sobreposição verde onde a pista é uniforme
     verde = np.zeros_like(roi)
     verde[:] = (0, 255, 0)
-    area_verde = cv2.bitwise_and(verde, verde, mask=mask_final)
+    area_verde = cv2.bitwise_and(verde, verde, mask=mask_uniforme)
     sobreposicao = cv2.addWeighted(roi, 1.0, area_verde, 0.4, 0)
     frame[inicio:, :] = sobreposicao
 
+    # Desenha o retângulo da ROI
     cv2.rectangle(frame, (0, inicio), (largura, altura), (0, 255, 0), 2)
 
-    M = cv2.moments(mask_final)
+    # Cálculo do centro da máscara de uniformidade
+    M = cv2.moments(mask_uniforme)
     if M["m00"] != 0:
         cx = int(M["m10"] / M["m00"])
         cy = int(M["m01"] / M["m00"]) + inicio
@@ -151,4 +156,3 @@ finally:
     if out is not None:
         out.release()
     cv2.destroyAllWindows()
-
