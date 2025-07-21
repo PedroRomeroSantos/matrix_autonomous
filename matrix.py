@@ -41,7 +41,7 @@ def parar():
 
 pipeline = (
     "libcamerasrc ! "
-    "video/x-raw, width=640, height=480, framerate=30/1 ! "
+    "video/x-raw, width=1296, height=972, framerate=30/1 ! "
     "videoconvert ! appsink"
 )
 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
@@ -59,11 +59,11 @@ vel_avanco = 45
 vel_giro = 30
 
 def gravar_video():
-    global out, recording, alternar_busca
+    global out, recording
 
     em_avanco = False
-    tempo_ultima_alternancia = time.time()
-    intervalo_alternancia = 1.5  # segundos antes de trocar o lado de rotação
+    inicio_rotacao = None
+    tempo_maximo_rotacao = 1.2  # segundos para giro de ~100°
 
     while recording:
         ret, frame = cap.read()
@@ -88,6 +88,7 @@ def gravar_video():
 
         if centro and media_y <= altura_limite:
             erro = centro[0] - centro_frame
+            inicio_rotacao = None  # reset ao detectar pista boa
 
             if abs(erro) <= margem:
                 if not em_avanco:
@@ -97,10 +98,24 @@ def gravar_video():
                 mover_motor(vel_avanco, vel_avanco)
             else:
                 em_avanco = False
-                mover_motor(vel_giro, -vel_giro)  # gira sempre para a esquerda até encontrar pista
+                parar()
+                time.sleep(0.5)
+                if erro < 0:
+                    mover_motor(-vel_giro, vel_giro)  # gira para esquerda
+                else:
+                    mover_motor(vel_giro, -vel_giro)  # gira para direita
+
         else:
             em_avanco = False
-            mover_motor(vel_giro, -vel_giro)  # gira sempre para a esquerda
+            if inicio_rotacao is None:
+                inicio_rotacao = time.time()
+
+            tempo_decorrido = time.time() - inicio_rotacao
+            if tempo_decorrido <= tempo_maximo_rotacao:
+                mover_motor(-vel_giro, vel_giro)  # gira sobre eixo (esquerda)
+            else:
+                parar()
+                print("⚠️ Giro máximo atingido e pista não encontrada.")
 
 
 
