@@ -53,8 +53,8 @@ recording = True
 alternar_busca = True
 
 # Velocidades reduzidas para comportamento mais suave
-vel_avanco = 40
-vel_giro = 30
+vel_avanco = 35
+vel_giro = 25
 
 def gravar_video():
     global out, recording, alternar_busca
@@ -93,6 +93,7 @@ def gravar_video():
                 mover_motor(vel_avanco, vel_avanco)
             else:
                 parar()
+                time.sleep(2)
                 if erro < 0:
                     mover_motor(0, vel_giro)  # gira para a esquerda
                 else:
