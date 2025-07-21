@@ -52,6 +52,10 @@ out = None  # Inicializa após primeiro frame
 recording = True
 alternar_busca = True
 
+# Velocidades reduzidas para comportamento mais suave
+vel_avanco = 40
+vel_giro = 30
+
 def gravar_video():
     global out, recording, alternar_busca
     while recording:
@@ -80,22 +84,26 @@ def gravar_video():
             if media_y > altura_limite:
                 parar()
                 if alternar_busca:
-                    mover_motor(0, 60)
+                    mover_motor(0, vel_giro)
                 else:
-                    mover_motor(60, 0)
+                    mover_motor(vel_giro, 0)
                 alternar_busca = not alternar_busca
                 time.sleep(0.5)
             elif abs(erro) <= margem:
-                mover_motor(60, 60)
-            elif erro < 0:
-                mover_motor(30, 70)
+                mover_motor(vel_avanco, vel_avanco)
             else:
-                mover_motor(70, 30)
+                parar()
+                if erro < 0:
+                    mover_motor(0, vel_giro)  # gira para a esquerda
+                else:
+                    mover_motor(vel_giro, 0)  # gira para a direita
+                time.sleep(0.4)
         else:
+            parar()
             if alternar_busca:
-                mover_motor(0, 60)
+                mover_motor(0, vel_giro)
             else:
-                mover_motor(60, 0)
+                mover_motor(vel_giro, 0)
             alternar_busca = not alternar_busca
             time.sleep(0.5)
 
@@ -143,6 +151,7 @@ finally:
     if out is not None:
         out.release()
     cv2.destroyAllWindows()
+
 
 
 
