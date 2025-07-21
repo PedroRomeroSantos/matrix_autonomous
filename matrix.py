@@ -31,7 +31,6 @@ def mover_motor(v_esq, v_dir):
     pwm_esq.ChangeDutyCycle(abs(v_esq))
     pwm_dir.ChangeDutyCycle(abs(v_dir))
 
-
 def parar():
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.LOW)
@@ -61,6 +60,10 @@ vel_giro = 30
 
 def gravar_video():
     global out, recording, alternar_busca
+
+    # Flag para evitar múltiplas pausas ao entrar em modo avançar
+    em_avanco = False
+
     while recording:
         ret, frame = cap.read()
         if not ret or frame is None:
@@ -79,27 +82,34 @@ def gravar_video():
         out.write(segmentado)
 
         centro_frame = width // 2
-        margem = 20  # margem de tolerância para alinhamento
-        altura_limite = int(height * 0.75)  # se a média da pista estiver muito baixa
+        margem = 20
+        altura_limite = int(height * 0.75)
 
         if centro and media_y <= altura_limite:
             erro = centro[0] - centro_frame
+
             if abs(erro) <= margem:
-                parar()
-                time.sleep(1)
+                if not em_avanco:
+                    parar()
+                    time.sleep(1)
+                    em_avanco = True
                 mover_motor(vel_avanco, vel_avanco)
             else:
+                em_avanco = False
                 parar()
                 if erro < 0:
                     mover_motor(vel_giro, -vel_giro)
                 else:
                     mover_motor(-vel_giro, vel_giro)
         else:
-            # Sem pista ou pista muito próxima (parede à frente)
+            em_avanco = False
+            # Pista ausente ou muito próxima (parede)
             if alternar_busca:
                 mover_motor(vel_giro, -vel_giro)
             else:
                 mover_motor(-vel_giro, vel_giro)
+            alternar_busca = not alternar_busca
+
 
 def segmentar_pista(frame):
     blur = cv2.GaussianBlur(frame, (5, 5), 0)
