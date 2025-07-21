@@ -59,15 +59,9 @@ vel_avanco = 45
 vel_giro = 30
 
 def gravar_video():
-    global out, recording
-
-    if not hasattr(gravar_video, "em_avanco"):
-        gravar_video.em_avanco = False
-
-    estado_busca = 0
-    tempo_inicio_giro = None
-    tempos_rotacao = [1.2, 2.4, 1.2]  # esquerda, direita, volta esquerda
-
+    global out, recording, alternar_busca
+    em_avanco = False
+    
     while recording:
         ret, frame = cap.read()
         if not ret or frame is None:
@@ -86,66 +80,24 @@ def gravar_video():
         out.write(segmentado)
 
         centro_frame = width // 2
-        margem = 20
-        altura_limite = int(height * 0.75)
+        margem = 5#erro latera de coreção em pixesls
+        altura_limite = int(height * 0.6) #altura limite para considerar a pista de cima pra baixo
 
         if centro and media_y <= altura_limite:
-            estado_busca = 0
-            tempo_inicio_giro = None
             erro = centro[0] - centro_frame
 
             if abs(erro) <= margem:
-                if not gravar_video.em_avanco:
+                if not em_avanco:
                     parar()
-                    time.sleep(1)
-                    gravar_video.em_avanco = True
+                    time.sleep(1.5)  # espera 1.5 segundos antes de avançar
+                    em_avanco = True
                 mover_motor(vel_avanco, vel_avanco)
             else:
-                gravar_video.em_avanco = False
-                parar()
-                time.sleep(0.5)
-                if erro < 0:
-                    mover_motor(-vel_giro, vel_giro)  # esquerda
-                else:
-                    mover_motor(vel_giro, -vel_giro)  # direita
-
+                em_avanco = False
+                mover_motor(vel_giro, -vel_giro)  # gira sempre para a esquerda até encontrar pista
         else:
-            gravar_video.em_avanco = False
-
-            if tempo_inicio_giro is None:
-                tempo_inicio_giro = time.time()
-
-            tempo_giro = time.time() - tempo_inicio_giro
-
-            if estado_busca == 0:
-                if tempo_giro < tempos_rotacao[0]:
-                    mover_motor(-vel_giro, vel_giro)  # esquerda
-                else:
-                    estado_busca = 1
-                    tempo_inicio_giro = time.time()
-                    parar()
-                    time.sleep(0.5)
-
-            elif estado_busca == 1:
-                if tempo_giro < tempos_rotacao[1]:
-                    mover_motor(vel_giro, -vel_giro)  # direita
-                else:
-                    estado_busca = 2
-                    tempo_inicio_giro = time.time()
-                    parar()
-                    time.sleep(0.5)
-
-            elif estado_busca == 2:
-                if tempo_giro < tempos_rotacao[2]:
-                    mover_motor(-vel_giro, vel_giro)  # esquerda
-                else:
-                    parar()
-                    print("Não encontrou pista. Recuando...")
-                    mover_motor(-40, -40)
-                    time.sleep(1)
-                    parar()
-                    estado_busca = 0
-                    tempo_inicio_giro = None
+            em_avanco = False
+            mover_motor(vel_giro, -vel_giro)  # gira sempre para a esquerda
 
 def segmentar_pista(frame):
     blur = cv2.GaussianBlur(frame, (5, 5), 0)
