@@ -56,8 +56,8 @@ recording = True
 alternar_busca = True
 
 # Velocidades reduzidas para comportamento mais suave
-vel_avanco = 35
-vel_giro = 25
+vel_avanco = 45
+vel_giro = 30
 
 def gravar_video():
     global out, recording, alternar_busca
