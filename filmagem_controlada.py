@@ -73,15 +73,20 @@ def gravar_video():
 def filtros(frame):
     imagem_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     imagem_blur = cv2.GaussianBlur(imagem_gray, (5, 5), 0)
-    imagem_canny = cv2.Canny(imagem_blur, 50, 150)
-    edges = cv2.Canny(imagem_gray, 50, 150)
+    edges = cv2.Canny(imagem_blur, 50, 150)
+
     linhas = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=50)
     if linhas is not None:
         for linha in linhas:
             x1, y1, x2, y2 = linha[0]
             cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    #cv2.imshow("ROI com Linhas", frame)
-    out.write(frame)
+
+    # Exibe frame com linhas sobrepostas
+    cv2.imshow("Visualização ao vivo", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return
+
+    #out.write(frame)
 
 def roi(frame):
     altura, largura = frame.shape[:2]
