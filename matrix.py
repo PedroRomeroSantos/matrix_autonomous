@@ -97,22 +97,10 @@ def gravar_video():
                 mover_motor(vel_avanco, vel_avanco)
             else:
                 em_avanco = False
-                parar()
-                if erro < 0:
-                    mover_motor(vel_giro, -vel_giro)
-                else:
-                    mover_motor(-vel_giro, vel_giro)
+                mover_motor(vel_giro, -vel_giro)  # gira sempre para a esquerda até encontrar pista
         else:
             em_avanco = False
-            agora = time.time()
-            if agora - tempo_ultima_alternancia > intervalo_alternancia:
-                alternar_busca = not alternar_busca
-                tempo_ultima_alternancia = agora
-
-            if alternar_busca:
-                mover_motor(vel_giro, -vel_giro)
-            else:
-                mover_motor(-vel_giro, vel_giro)
+            mover_motor(vel_giro, -vel_giro)  # gira sempre para a esquerda
 
 
 
