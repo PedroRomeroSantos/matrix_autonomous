@@ -20,14 +20,17 @@ pwm_esq.start(0)
 pwm_dir.start(0)
 
 def mover_motor(v_esq, v_dir):
-    v_esq = max(min(v_esq, 100), 0)
-    v_dir = max(min(v_dir, 100), 0)
-    GPIO.output(IN1, GPIO.HIGH)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.HIGH)
-    GPIO.output(IN4, GPIO.LOW)
-    pwm_esq.ChangeDutyCycle(v_esq)
-    pwm_dir.ChangeDutyCycle(v_dir)
+    v_esq = max(min(v_esq, 100), -100)
+    v_dir = max(min(v_dir, 100), -100)
+
+    GPIO.output(IN1, GPIO.HIGH if v_esq >= 0 else GPIO.LOW)
+    GPIO.output(IN2, GPIO.LOW if v_esq >= 0 else GPIO.HIGH)
+    GPIO.output(IN3, GPIO.HIGH if v_dir >= 0 else GPIO.LOW)
+    GPIO.output(IN4, GPIO.LOW if v_dir >= 0 else GPIO.HIGH)
+
+    pwm_esq.ChangeDutyCycle(abs(v_esq))
+    pwm_dir.ChangeDutyCycle(abs(v_dir))
+
 
 def parar():
     GPIO.output(IN1, GPIO.LOW)
@@ -83,22 +86,24 @@ def gravar_video():
             erro = centro[0] - centro_frame
             if media_y > altura_limite:
                 parar()
+                time.sleep(1)  # Pausa antes da rotação
                 if alternar_busca:
-                    mover_motor(0, vel_giro)
+                    mover_motor(vel_giro, -vel_giro)  # gira sobre o eixo para a esquerda
                 else:
-                    mover_motor(vel_giro, 0)
+                    mover_motor(-vel_giro, vel_giro)  # gira sobre o eixo para a direita
                 alternar_busca = not alternar_busca
                 time.sleep(0.5)
             elif abs(erro) <= margem:
                 mover_motor(vel_avanco, vel_avanco)
             else:
                 parar()
-                time.sleep(2)
+                time.sleep(1)
                 if erro < 0:
-                    mover_motor(0, vel_giro)  # gira para a esquerda
+                    mover_motor(vel_giro, -vel_giro)  # gira sobre o eixo para a esquerda
                 else:
-                    mover_motor(vel_giro, 0)  # gira para a direita
-                time.sleep(0.4)
+                    mover_motor(-vel_giro, vel_giro)  # gira sobre o eixo para a direita
+                    time.sleep(0.5)
+
         else:
             parar()
             if alternar_busca:
