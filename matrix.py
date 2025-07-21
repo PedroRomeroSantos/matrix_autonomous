@@ -61,8 +61,9 @@ vel_giro = 30
 def gravar_video():
     global out, recording, alternar_busca
 
-    # Flag para evitar múltiplas pausas ao entrar em modo avançar
     em_avanco = False
+    tempo_ultima_alternancia = time.time()
+    intervalo_alternancia = 1.5  # segundos antes de trocar o lado de rotação
 
     while recording:
         ret, frame = cap.read()
@@ -103,12 +104,16 @@ def gravar_video():
                     mover_motor(-vel_giro, vel_giro)
         else:
             em_avanco = False
-            # Pista ausente ou muito próxima (parede)
+            agora = time.time()
+            if agora - tempo_ultima_alternancia > intervalo_alternancia:
+                alternar_busca = not alternar_busca
+                tempo_ultima_alternancia = agora
+
             if alternar_busca:
                 mover_motor(vel_giro, -vel_giro)
             else:
                 mover_motor(-vel_giro, vel_giro)
-            alternar_busca = not alternar_busca
+
 
 
 def segmentar_pista(frame):
