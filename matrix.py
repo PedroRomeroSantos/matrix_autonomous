@@ -55,8 +55,8 @@ recording = True
 alternar_busca = True
 
 # Velocidades reduzidas para comportamento mais suave
-vel_avanco = 45
-vel_giro = 30
+vel_avanco = 55
+vel_giro = 40
 
 def gravar_video():
     global out, recording, alternar_busca
@@ -80,7 +80,7 @@ def gravar_video():
         out.write(segmentado)
 
         centro_frame = width // 2
-        margem = 5#erro latera de coreção em pixesls
+        margem = 5 #erro latera de coreção em pixesls
         altura_limite = int(height * 0.6) #altura limite para considerar a pista de cima pra baixo
 
         if centro and media_y <= altura_limite:
